@@ -18,9 +18,11 @@ const config: Options = {
   minify: false,
   sourcemap: false,
   dts: false,
-  clean: true,
+  clean: false,
+  outDir: '.',
   external: [],
   noExternal: [/.*/],
+  outExtensions: () => ({ js: '.js' }),
 };
 
 export default config;
