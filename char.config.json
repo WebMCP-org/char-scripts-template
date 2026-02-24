@@ -1,11 +1,21 @@
 {
-  "scripts": [
+  "version": 2,
+  "script_groups": [
     {
-      "name": "restaurant-example",
-      "entry": "scripts/restaurant-example/tools.ts",
-      "match_patterns": ["https://www.opentable.com/*"],
-      "run_at": "document_end",
-      "description": "Restaurant reservation tools for OpenTable"
+      "group_id": "opentable",
+      "name": "OpenTable",
+      "tool_prefix": "opentable",
+      "scope": {
+        "match_patterns": ["https://www.opentable.com/*"],
+        "run_at": "document_end"
+      },
+      "scripts": [
+        {
+          "name": "restaurant-example",
+          "entry": "scripts/restaurant-example/tools.ts",
+          "description": "Restaurant reservation tools for OpenTable"
+        }
+      ]
     }
   ]
 }
