@@ -14455,10 +14455,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					type: "string",
 					description: "Restaurant name, cuisine, or location to search for"
 				},
-				date: {
-					type: "string",
-					description: "Reservation date in YYYY-MM-DD format"
-				},
 				party_size: {
 					type: "number",
 					description: "Number of guests (default: 2)"
@@ -14466,32 +14462,29 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			},
 			required: ["query"]
 		},
-		async execute({ query, date, party_size }) {
-			const searchInput = document.querySelector("input[data-test=\"search-autocomplete-input\"], input[aria-label*=\"Location\"]");
+		async execute({ query, party_size }) {
+			const searchInput = document.querySelector("input[data-test=\"search-autocomplete-input\"]");
 			if (!searchInput) return { content: [{
 				type: "text",
 				text: "Search input not found on page. Make sure you are on opentable.com."
 			}] };
+			const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
 			searchInput.focus();
-			searchInput.value = query;
+			nativeInputValueSetter.call(searchInput, query);
 			searchInput.dispatchEvent(new Event("input", { bubbles: true }));
-			if (date) {
-				const dateInput = document.querySelector("input[data-test=\"date-picker\"], input[aria-label*=\"Date\"]");
-				if (dateInput) {
-					dateInput.value = date;
-					dateInput.dispatchEvent(new Event("change", { bubbles: true }));
-				}
-			}
 			if (party_size) {
-				const sizeSelector = document.querySelector("select[data-test=\"party-size-picker\"], select[aria-label*=\"Party\"]");
+				const sizeSelector = document.querySelector("select[data-test=\"party-size-picker\"]");
 				if (sizeSelector) {
 					sizeSelector.value = String(party_size);
 					sizeSelector.dispatchEvent(new Event("change", { bubbles: true }));
 				}
 			}
+			await new Promise((r) => setTimeout(r, 500));
+			const letsGoBtn = Array.from(document.querySelectorAll("button")).find((b) => b.textContent?.trim() === "Let's go");
+			if (letsGoBtn) letsGoBtn.click();
 			return { content: [{
 				type: "text",
-				text: `Filled search with query="${query}"${date ? `, date=${date}` : ""}${party_size ? `, party_size=${party_size}` : ""}. Click the search button to see results.`
+				text: `Searched for "${query}"${party_size ? ` with party size ${party_size}` : ""}. Wait for results to load, then use read_search_results.`
 			}] };
 		}
 	});
@@ -14507,21 +14500,20 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		},
 		async execute({ limit }) {
 			const maxResults = limit || 10;
-			const cards = document.querySelectorAll("[data-test=\"restaurant-card\"], [class*=\"RestaurantCard\"]");
+			const cards = document.querySelectorAll("a[href*=\"/r/\"]");
 			if (cards.length === 0) return { content: [{
 				type: "text",
 				text: "No restaurant results found on the page. Try searching first."
 			}] };
 			const results = Array.from(cards).slice(0, maxResults).map((card, i) => {
-				const name = card.querySelector("h2, [class*=\"Name\"]")?.textContent?.trim() ?? "Unknown";
-				const cuisine = card.querySelector("[class*=\"Cuisine\"]")?.textContent?.trim() ?? "";
-				const rating = card.querySelector("[class*=\"Rating\"], [aria-label*=\"star\"]")?.textContent?.trim() ?? "";
-				const price = card.querySelector("[class*=\"Price\"]")?.textContent?.trim() ?? "";
-				return `${i + 1}. ${name}${cuisine ? ` (${cuisine})` : ""}${rating ? ` - ${rating}` : ""}${price ? ` - ${price}` : ""}`;
+				const name = card.querySelector("h3")?.textContent?.trim() ?? card.textContent?.trim().substring(0, 50) ?? "Unknown";
+				const href = card.getAttribute("href") ?? "";
+				const fullText = card.textContent?.trim() ?? "";
+				return `${i + 1}. ${name}\n   ${fullText.substring(name.length, name.length + 80)}\n   ${href}`;
 			});
 			return { content: [{
 				type: "text",
-				text: `Found ${cards.length} results:\n${results.join("\n")}`
+				text: `Found ${cards.length} restaurants:\n${results.join("\n")}`
 			}] };
 		}
 	});

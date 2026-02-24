@@ -18,10 +18,6 @@ navigator.modelContext.registerTool({
         type: 'string',
         description: 'Restaurant name, cuisine, or location to search for',
       },
-      date: {
-        type: 'string',
-        description: 'Reservation date in YYYY-MM-DD format',
-      },
       party_size: {
         type: 'number',
         description: 'Number of guests (default: 2)',
@@ -29,9 +25,9 @@ navigator.modelContext.registerTool({
     },
     required: ['query'],
   },
-  async execute({ query, date, party_size }) {
+  async execute({ query, party_size }) {
     const searchInput = document.querySelector<HTMLInputElement>(
-      'input[data-test="search-autocomplete-input"], input[aria-label*="Location"]'
+      'input[data-test="search-autocomplete-input"]'
     );
     if (!searchInput) {
       return {
@@ -44,26 +40,18 @@ navigator.modelContext.registerTool({
       };
     }
 
-    // Fill search field
+    // Fill search field using native input setter to trigger React state
+    const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+      window.HTMLInputElement.prototype, 'value'
+    )!.set!;
     searchInput.focus();
-    searchInput.value = query as string;
+    nativeInputValueSetter.call(searchInput, query as string);
     searchInput.dispatchEvent(new Event('input', { bubbles: true }));
-
-    // Fill date if provided
-    if (date) {
-      const dateInput = document.querySelector<HTMLInputElement>(
-        'input[data-test="date-picker"], input[aria-label*="Date"]'
-      );
-      if (dateInput) {
-        dateInput.value = date as string;
-        dateInput.dispatchEvent(new Event('change', { bubbles: true }));
-      }
-    }
 
     // Fill party size if provided
     if (party_size) {
       const sizeSelector = document.querySelector<HTMLSelectElement>(
-        'select[data-test="party-size-picker"], select[aria-label*="Party"]'
+        'select[data-test="party-size-picker"]'
       );
       if (sizeSelector) {
         sizeSelector.value = String(party_size);
@@ -71,11 +59,19 @@ navigator.modelContext.registerTool({
       }
     }
 
+    // Click "Let's go" to submit search
+    await new Promise(r => setTimeout(r, 500));
+    const buttons = Array.from(document.querySelectorAll('button'));
+    const letsGoBtn = buttons.find(b => b.textContent?.trim() === "Let's go");
+    if (letsGoBtn) {
+      letsGoBtn.click();
+    }
+
     return {
       content: [
         {
           type: 'text' as const,
-          text: `Filled search with query="${query}"${date ? `, date=${date}` : ''}${party_size ? `, party_size=${party_size}` : ''}. Click the search button to see results.`,
+          text: `Searched for "${query}"${party_size ? ` with party size ${party_size}` : ''}. Wait for results to load, then use read_search_results.`,
         },
       ],
     };
@@ -97,9 +93,8 @@ navigator.modelContext.registerTool({
   },
   async execute({ limit }) {
     const maxResults = (limit as number) || 10;
-    const cards = document.querySelectorAll(
-      '[data-test="restaurant-card"], [class*="RestaurantCard"]'
-    );
+    // Restaurant cards are anchor links to /r/ pages
+    const cards = document.querySelectorAll('a[href*="/r/"]');
 
     if (cards.length === 0) {
       return {
@@ -116,23 +111,20 @@ navigator.modelContext.registerTool({
       .slice(0, maxResults)
       .map((card, i) => {
         const name =
-          card.querySelector('h2, [class*="Name"]')?.textContent?.trim() ??
+          card.querySelector('h3')?.textContent?.trim() ??
+          card.textContent?.trim().substring(0, 50) ??
           'Unknown';
-        const cuisine =
-          card.querySelector('[class*="Cuisine"]')?.textContent?.trim() ?? '';
-        const rating =
-          card.querySelector('[class*="Rating"], [aria-label*="star"]')
-            ?.textContent?.trim() ?? '';
-        const price =
-          card.querySelector('[class*="Price"]')?.textContent?.trim() ?? '';
-        return `${i + 1}. ${name}${cuisine ? ` (${cuisine})` : ''}${rating ? ` - ${rating}` : ''}${price ? ` - ${price}` : ''}`;
+        const href = card.getAttribute('href') ?? '';
+        // Extract the full card text which includes rating, cuisine, price, location
+        const fullText = card.textContent?.trim() ?? '';
+        return `${i + 1}. ${name}\n   ${fullText.substring(name.length, name.length + 80)}\n   ${href}`;
       });
 
     return {
       content: [
         {
           type: 'text' as const,
-          text: `Found ${cards.length} results:\n${results.join('\n')}`,
+          text: `Found ${cards.length} restaurants:\n${results.join('\n')}`,
         },
       ],
     };
