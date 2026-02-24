@@ -1,0 +1,11 @@
+{
+  "scripts": [
+    {
+      "name": "restaurant-example",
+      "entry": "scripts/restaurant-example/tools.ts",
+      "match_patterns": ["https://www.opentable.com/*"],
+      "run_at": "document_end",
+      "description": "Restaurant reservation tools for OpenTable"
+    }
+  ]
+}

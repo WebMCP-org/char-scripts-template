@@ -1,0 +1,16 @@
+{
+  "name": "@webmcp-org/char-scripts-template",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsdown",
+    "check": "tsc --noEmit",
+    "dev-inject": "echo 'Use CDP MCP evaluate_script to inject tools.ts into the active tab for authoring/testing'"
+  },
+  "devDependencies": {
+    "@mcp-b/global": "^1.6.0",
+    "tsdown": "^0.20.3",
+    "typescript": "^5.7.0"
+  }
+}
