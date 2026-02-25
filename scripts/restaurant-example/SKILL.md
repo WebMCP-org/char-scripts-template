@@ -1,3 +1,8 @@
+---
+name: opentable-reservations
+description: Use OpenTable browser tools to search availability and fill reservation details with explicit user confirmation.
+---
+
 # Restaurant Reservations (OpenTable)
 
 ## When to use these tools
