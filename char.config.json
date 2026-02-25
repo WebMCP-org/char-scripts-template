@@ -18,8 +18,8 @@
       ]
     },
     {
-      "group_id": "thefork_api",
-      "name": "TheFork Manager — API",
+      "group_id": "thefork_manager",
+      "name": "TheFork Manager",
       "tool_prefix": "fork",
       "scope": {
         "match_patterns": ["https://manager.thefork.com/*"],
@@ -29,39 +29,26 @@
         {
           "name": "graphql",
           "entry": "scripts/thefork-manager/graphql/tools.ts",
+          "tool_prefix": "graphql",
           "description": "GraphQL API tool for TheFork Manager (act layer)"
-        }
-      ]
-    },
-    {
-      "group_id": "thefork_verify_booking",
-      "name": "TheFork Manager — Verify Booking",
-      "tool_prefix": "fork_booking",
-      "scope": {
-        "match_patterns": ["https://manager.thefork.com/*/booking/*"],
-        "run_at": "document_end"
-      },
-      "scripts": [
+        },
         {
           "name": "verify-booking",
           "entry": "scripts/thefork-manager/verify-booking/tools.ts",
-          "description": "DOM verification tools for booking pages (verify layer)"
-        }
-      ]
-    },
-    {
-      "group_id": "thefork_verify_service",
-      "name": "TheFork Manager — Verify Service",
-      "tool_prefix": "fork_service",
-      "scope": {
-        "match_patterns": ["https://manager.thefork.com/*/service/*"],
-        "run_at": "document_end"
-      },
-      "scripts": [
+          "tool_prefix": "booking_verify-booking",
+          "description": "DOM verification tools for booking pages (verify layer)",
+          "scope_override": {
+            "match_patterns": ["https://manager.thefork.com/*/booking/*"]
+          }
+        },
         {
           "name": "verify-service",
           "entry": "scripts/thefork-manager/verify-service/tools.ts",
-          "description": "DOM verification tools for service pages (verify layer)"
+          "tool_prefix": "service_verify-service",
+          "description": "DOM verification tools for service pages (verify layer)",
+          "scope_override": {
+            "match_patterns": ["https://manager.thefork.com/*/service/*"]
+          }
         }
       ]
     }
