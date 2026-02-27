@@ -14438,151 +14438,98 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 	}
 
 //#endregion
-//#region scripts/restaurant-example/tools.ts
+//#region scripts/thefork-manager/verify-booking/tools.ts
 /**
-	* Restaurant reservation tools for OpenTable.
+	* TheFork Manager — Booking page verification tools.
 	*
-	* These tools let the Char agent search for restaurants, read availability,
-	* and fill reservation forms on opentable.com.
+	* These tools read specific UI elements on /booking/* pages to verify that
+	* GraphQL mutations actually took effect.
+	*
+	* Pattern: ACT via the graphql tool, then VERIFY with these tools.
 	*/
 	navigator.modelContext.registerTool({
-		name: "search_restaurants",
-		description: "Search for restaurants on the current OpenTable page by entering a query into the search field",
+		name: "verify_booking_list",
+		description: "Read the booking list visible on the page. Returns the date, active service, total reservation count, and each reservation's summary text. Use after a GraphQL mutation to confirm the change is reflected in the UI.",
 		inputSchema: {
 			type: "object",
-			properties: {
-				query: {
-					type: "string",
-					description: "Restaurant name, cuisine, or location to search for"
-				},
-				party_size: {
-					type: "number",
-					description: "Number of guests (default: 2)"
-				}
-			},
-			required: ["query"]
+			properties: {}
 		},
-		async execute({ query, party_size }) {
-			const searchInput = document.querySelector("input[data-test=\"search-autocomplete-input\"]");
-			if (!searchInput) return { content: [{
-				type: "text",
-				text: "Search input not found on page. Make sure you are on opentable.com."
-			}] };
-			const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
-			searchInput.focus();
-			nativeInputValueSetter.call(searchInput, query);
-			searchInput.dispatchEvent(new Event("input", { bubbles: true }));
-			if (party_size) {
-				const sizeSelector = document.querySelector("select[data-test=\"party-size-picker\"]");
-				if (sizeSelector) {
-					sizeSelector.value = String(party_size);
-					sizeSelector.dispatchEvent(new Event("change", { bubbles: true }));
-				}
-			}
-			await new Promise((r) => setTimeout(r, 500));
-			const letsGoBtn = Array.from(document.querySelectorAll("button")).find((b) => b.textContent?.trim() === "Let's go");
-			if (letsGoBtn) letsGoBtn.click();
-			return { content: [{
-				type: "text",
-				text: `Searched for "${query}"${party_size ? ` with party size ${party_size}` : ""}. Wait for results to load, then use read_search_results.`
-			}] };
-		}
-	});
-	navigator.modelContext.registerTool({
-		name: "read_search_results",
-		description: "Read the list of restaurant search results currently visible on the OpenTable page",
-		inputSchema: {
-			type: "object",
-			properties: { limit: {
-				type: "number",
-				description: "Maximum number of results to return (default: 10)"
-			} }
+		annotations: {
+			title: "Verify Booking List",
+			readOnlyHint: true
 		},
-		async execute({ limit }) {
-			const maxResults = limit || 10;
-			const cards = document.querySelectorAll("a[href*=\"/r/\"]");
-			if (cards.length === 0) return { content: [{
-				type: "text",
-				text: "No restaurant results found on the page. Try searching first."
-			}] };
-			const results = Array.from(cards).slice(0, maxResults).map((card, i) => {
-				const name = card.querySelector("h3")?.textContent?.trim() ?? card.textContent?.trim().substring(0, 50) ?? "Unknown";
-				const href = card.getAttribute("href") ?? "";
-				const fullText = card.textContent?.trim() ?? "";
-				return `${i + 1}. ${name}\n   ${fullText.substring(name.length, name.length + 80)}\n   ${href}`;
+		async execute() {
+			const url = window.location.href;
+			const dateButtons = Array.from(document.querySelectorAll("button"));
+			const date = dateButtons.find((b) => /\b\d{1,2}\s\w{3}\b/.test(b.textContent ?? ""))?.textContent?.trim() ?? "unknown";
+			const services = dateButtons.filter((b) => /(?:Lunch|Dinner|Brunch|Service)\s*\d+p/i.test(b.textContent ?? "")).map((b) => ({
+				name: b.textContent?.trim() ?? "",
+				active: b.getAttribute("aria-pressed") === "true" || b.classList.contains("active") || getComputedStyle(b).fontWeight >= "600"
+			}));
+			const total = Array.from(document.querySelectorAll("*")).find((el) => {
+				return (el.textContent ?? "").includes("Total reserved:") && el.children.length < 5;
+			})?.textContent?.trim().replace(/\s+/g, " ") ?? "unknown";
+			const noReservations = dateButtons.some((b) => b.textContent?.includes("No reservations"));
+			const reservations = [];
+			document.querySelectorAll("[data-testid*=\"reservation\"], [class*=\"reservation-row\"], [class*=\"booking-row\"]").forEach((row) => {
+				const text = row.textContent?.trim().replace(/\s+/g, " ") ?? "";
+				if (text.length > 3) reservations.push({ text: text.substring(0, 200) });
 			});
 			return { content: [{
 				type: "text",
-				text: `Found ${cards.length} restaurants:\n${results.join("\n")}`
+				text: JSON.stringify({
+					url,
+					date,
+					services,
+					total,
+					noReservations,
+					reservationCount: reservations.length,
+					reservations: reservations.slice(0, 20)
+				}, null, 2)
 			}] };
 		}
 	});
 	navigator.modelContext.registerTool({
-		name: "fill_reservation",
-		description: "Fill out the reservation form fields on an OpenTable restaurant page",
+		name: "verify_page_context",
+		description: "Read the current page context: URL, date, selected service, timeslot occupancy. Use to understand where you are before taking actions.",
 		inputSchema: {
 			type: "object",
-			properties: {
-				first_name: {
-					type: "string",
-					description: "Guest's first name"
-				},
-				last_name: {
-					type: "string",
-					description: "Guest's last name"
-				},
-				email: {
-					type: "string",
-					description: "Guest's email address"
-				},
-				phone: {
-					type: "string",
-					description: "Guest's phone number"
-				},
-				special_requests: {
-					type: "string",
-					description: "Any special requests or notes"
-				}
-			},
-			required: [
-				"first_name",
-				"last_name",
-				"email",
-				"phone"
-			]
+			properties: {}
 		},
-		async execute({ first_name, last_name, email, phone, special_requests }) {
-			const fieldMap = {
-				first_name: "input[data-test=\"first-name\"], input[name=\"firstName\"], input[autocomplete=\"given-name\"]",
-				last_name: "input[data-test=\"last-name\"], input[name=\"lastName\"], input[autocomplete=\"family-name\"]",
-				email: "input[data-test=\"email\"], input[name=\"email\"], input[type=\"email\"]",
-				phone: "input[data-test=\"phone\"], input[name=\"phone\"], input[type=\"tel\"]",
-				special_requests: "textarea[data-test=\"special-requests\"], textarea[name=\"specialRequests\"]"
-			};
-			const values = {
-				first_name,
-				last_name,
-				email,
-				phone,
-				special_requests
-			};
-			const filled = [];
-			const missing = [];
-			for (const [field, selector] of Object.entries(fieldMap)) {
-				const value = values[field];
-				if (!value) continue;
-				const el = document.querySelector(selector);
-				if (el) {
-					el.focus();
-					el.value = String(value);
-					el.dispatchEvent(new Event("input", { bubbles: true }));
-					el.dispatchEvent(new Event("change", { bubbles: true }));
-					filled.push(field);
-				} else missing.push(field);
+		annotations: {
+			title: "Verify Page Context",
+			readOnlyHint: true
+		},
+		async execute() {
+			const url = window.location.href;
+			const urlMatch = url.match(/\/booking\/(\d{4}-\d{2}-\d{2})\/([a-f0-9-]+)/);
+			const urlDate = urlMatch?.[1] ?? null;
+			const urlServiceUuid = urlMatch?.[2] ?? null;
+			const mainEl = document.querySelector("main");
+			const heading = mainEl?.querySelector("h3, h2")?.textContent?.trim() ?? null;
+			const staticTexts = mainEl ? Array.from(mainEl.querySelectorAll("*")).filter((el) => el.children.length === 0).map((el) => el.textContent?.trim()).filter(Boolean) : [];
+			const totalBooked = staticTexts.find((t) => t.startsWith("Total booked")) ?? null;
+			const totalBookable = staticTexts.find((t) => t.startsWith("Total bookable")) ?? null;
+			const timeslots = [];
+			for (let i = 0; i < staticTexts.length - 1; i++) {
+				const timeMatch = staticTexts[i].match(/^(\d{2}:\d{2})$/);
+				const occMatch = staticTexts[i + 1]?.match(/^(\d+\/\d+)$/);
+				if (timeMatch && occMatch) timeslots.push({
+					time: timeMatch[1],
+					occupancy: occMatch[1]
+				});
 			}
 			return { content: [{
 				type: "text",
-				text: `Reservation form: filled ${filled.join(", ")}${missing.length ? `. Could not find: ${missing.join(", ")}` : ""}. Review and submit when ready.`
+				text: JSON.stringify({
+					url,
+					urlDate,
+					urlServiceUuid,
+					heading,
+					totalBooked,
+					totalBookable,
+					timeslots: timeslots.slice(0, 20)
+				}, null, 2)
 			}] };
 		}
 	});

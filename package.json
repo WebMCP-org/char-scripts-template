@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsdown",
+    "build": "tsdown && find scripts -name '*.user.iife.js' -exec sh -c 'cp \"$1\" \"${1%.iife.js}.js\"' _ {} \\;",
     "check": "tsc --noEmit",
     "dev-inject": "echo 'Use CDP MCP evaluate_script to inject tools.ts into the active tab for authoring/testing'"
   },
