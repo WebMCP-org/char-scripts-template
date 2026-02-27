@@ -19,6 +19,8 @@ const entries: Record<string, string> = {
     'scripts/thefork-manager/verify-booking/tools.ts',
   'scripts/thefork-manager/verify-service/tools.user':
     'scripts/thefork-manager/verify-service/tools.ts',
+  'scripts/ecommerce-shopify/tools.user':
+    'scripts/ecommerce-shopify/tools.ts',
 };
 
 const shared: Omit<Options, 'entry'> = {

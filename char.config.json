@@ -51,6 +51,22 @@
           }
         }
       ]
+    },
+    {
+      "group_id": "ecommerce_shopify",
+      "name": "Shopify Ecommerce",
+      "tool_prefix": "shop",
+      "scope": {
+        "match_patterns": ["https://www.taylorstitch.com/*"],
+        "run_at": "document_end"
+      },
+      "scripts": [
+        {
+          "name": "ecommerce-shopify",
+          "entry": "scripts/ecommerce-shopify/tools.ts",
+          "description": "DOM-driven ecommerce tools for Shopify stores (select options, add to cart, checkout)"
+        }
+      ]
     }
   ]
 }
